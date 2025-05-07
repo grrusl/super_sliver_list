@@ -50,11 +50,6 @@ class AnimateToItem {
       vsync: position.context.vsync,
       duration: duration(estimatedDistance),
     );
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _controller.dispose();
-      }
-    });
     _animation = CurvedAnimation(
       parent: _controller,
       curve: curve(estimatedDistance),
@@ -63,8 +58,7 @@ class AnimateToItem {
       final value = _animation.value;
       final index = this.index();
       if (index == null) {
-        _controller.stop();
-        _controller.dispose();
+        dispose();
         return;
       }
       var targetPosition = extentManager.getOffsetToReveal(
