@@ -134,15 +134,18 @@ class ListController extends ChangeNotifier {
   }) {
     assert(_delegate != null, "ListController is not attached.");
     for (final position in scrollController.positions) {
-      AnimateToItem(
-        extentManager: _delegate!,
-        index: index,
-        alignment: alignment,
-        rect: rect,
-        position: position,
-        curve: curve,
-        duration: duration,
-      ).animate();
+      late final AnimateToItem animation;
+      animation = AnimateToItem(
+          extentManager: _delegate!,
+          index: index,
+          alignment: alignment,
+          rect: rect,
+          position: position,
+          curve: curve,
+          duration: duration,
+          whenCompleteOrCancel: () => _runningAnimations.remove(animation));
+      _runningAnimations.add(animation);
+      animation.animate();
     }
   }
 
@@ -249,6 +252,11 @@ class ListController extends ChangeNotifier {
     super.dispose();
   }
 
+  /// Keeps track of created [AnimateToItem] so we could later dispose
+  /// [AnimationController]s and animations in case list controller is suddenly
+  /// unattached.
+  final List<AnimateToItem> _runningAnimations = [];
+
   ExtentManager? _delegate;
 
   void setDelegate(ExtentManager delegate) {
@@ -270,6 +278,12 @@ class ListController extends ChangeNotifier {
     if (_delegate == delegate) {
       _delegate?.removeListener(notifyListeners);
       _delegate = null;
+      // because list can be modified from callback that can be called from
+      // [AnimateToItem.dispose] we must iterate over copy
+      for (final controller in _runningAnimations.toList()) {
+        controller.dispose();
+      }
+      _runningAnimations.clear();
       onDetached?.call();
     }
   }
