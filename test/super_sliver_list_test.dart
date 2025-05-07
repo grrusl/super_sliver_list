@@ -7,7 +7,6 @@ import "package:flutter_test/flutter_test.dart";
 import "package:logging/logging.dart";
 import "package:sliver_tools/sliver_tools.dart";
 import "package:super_sliver_list/super_sliver_list.dart";
-
 // ignore: deprecated_member_use
 import "package:test_api/src/backend/invoker.dart" as invoker;
 
@@ -1224,6 +1223,53 @@ void main() async {
       await tester.pumpWidget(const SizedBox.shrink());
       expect(attached, 2);
       expect(detached, 2);
+      expect(controller.isAttached, false);
+    });
+    testWidgets("remove widget mid animation", (tester) async {
+      final scrollController = ScrollController();
+
+      int attached = 0;
+      int detached = 0;
+      final controller = ListController(
+        onAttached: () {
+          ++attached;
+        },
+        onDetached: () {
+          ++detached;
+        },
+      );
+      final configuration = SliverListConfiguration.generate(
+        slivers: 1,
+        itemsPerSliver: (_) => 20,
+        itemHeight: (_, __) => 300,
+        viewportHeight: 500,
+        addGlobalKey: true,
+      );
+      await tester.pumpWidget(_buildSliverList(
+        configuration,
+        listController: controller,
+        preciseLayout: false,
+        controller: scrollController,
+      ));
+      await tester.pumpAndSettle();
+      expect(attached, 1);
+      expect(detached, 0);
+      expect(controller.isAttached, isTrue);
+
+      controller.animateToItem(
+        index: () => 10,
+        scrollController: scrollController,
+        alignment: 0.5,
+        duration: (estimatedDistance) => const Duration(milliseconds: 1000),
+        curve: (estimatedDistance) => Curves.linear,
+      );
+
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // will throw if there are any leaked Tickers
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(attached, 1);
+      expect(detached, 1);
       expect(controller.isAttached, false);
     });
     testWidgets("replace controller", (tester) async {
